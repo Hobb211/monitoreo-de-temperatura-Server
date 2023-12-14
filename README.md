@@ -4,7 +4,7 @@
 La estructura de los datos en mongoDB es:
 
 Departamento{
-    Numero:
+    Numero: 
     TMin:
     TMax:
     TIdeal:
@@ -12,6 +12,7 @@ Departamento{
         {
             Log:
             TimeStamp:
+            Visibilidad:
         }
     ]
 }
@@ -28,7 +29,7 @@ Historial{
 
 
 ## ClickHouse
-Se utilizo clickhouse en un contenedor de docker como base de datos columnar algunas de las funciones que se utilizaron en clickhouse fueron:
+Se utilizo clickhouse en un servidor de aws en la nube como base de datos columnar algunas de las funciones que se utilizaron en clickhouse fueron:
 
 CREATE TABLE mediciones
 (

@@ -10,10 +10,13 @@ import { ClickHouse } from 'clickhouse';
     {
       provide: 'CLICKHOUSE',
       useFactory: () => new ClickHouse({
-        url: 'http://localhost',
-        port: 8123,
+        url: 'https://vcxy28qwe6.us-west-2.aws.clickhouse.cloud',
+        port: 8443,
         debug: false,
-        basicAuth: null,
+        basicAuth: {
+          username: 'default',
+          password: '9gadIswjJ~jdv',
+        },
       })
     }
   ],
