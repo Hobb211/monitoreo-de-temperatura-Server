@@ -8,7 +8,7 @@ export class AppService {
 
   constructor(
     @Inject('CLICKHOUSE') private readonly clickhouse: ClickHouse,
-  ){
+  ) {
     cron.schedule('0 0 * * *', () => {
       this.average();
     });
@@ -50,9 +50,22 @@ export class AppService {
       return { hora: parseInt(hora), promedio };
     });
   }
+
+  async setData() {
+    let cont = 1
+    const datos = Array.from({ length: 120 }, () => ({
+      departamento: String(cont++),
+      temperatura: Math.random(),
+      timestamp: Date.now(), //new Date().toLocaleString(),
+    }));
+    const query = "INSERT INTO nombre_de_tu_tabla (temperatura, departamento, timestamp) VALUES";
+    const values = datos.map(({ temperatura, departamento, timestamp }) => (`${temperatura}, '${departamento}', '${timestamp}'`)).join(', ');
+    await this.clickhouse.query(`${query} ${values}`);
+  }
 }
 
 function getRandomDecimal(min, max, precision) {
   const factor = Math.pow(10, precision);
   return Math.floor(Math.random() * (max - min + 1) * factor) / factor + min;
 }
+
