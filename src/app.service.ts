@@ -54,13 +54,13 @@ export class AppService {
   async setData() {
     let cont = 1
     const datos = Array.from({ length: 120 }, () => ({
-      departamento: String(cont++),
-      temperatura: Math.random(),
+      departamento: cont++,
+      temperatura: parseFloat(getRandomDecimal(15, 20, 2)),
       timestamp: Date.now(), //new Date().toLocaleString(),
     }));
-    const query = "INSERT INTO nombre_de_tu_tabla (temperatura, departamento, timestamp) VALUES";
-    const values = datos.map(({ temperatura, departamento, timestamp }) => (`${temperatura}, '${departamento}', '${timestamp}'`)).join(', ');
-    await this.clickhouse.query(`${query} ${values}`);
+    const query = "INSERT INTO mediciones (temperatura, departamento, timestamp) VALUES";
+    const values = datos.map(({ temperatura, departamento, timestamp }) => (`(${temperatura}, '${departamento}', '${timestamp}')`)).join(', ');
+    await this.clickhouse.query(`${query} ${values}`).toPromise();
   }
 }
 
