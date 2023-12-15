@@ -69,7 +69,7 @@ export class AppService {
   async setData() {
     let datos = getData()
     const query = "INSERT INTO mediciones (temperatura, departamento, timestamp) VALUES";
-    const values = datos.map(({ temperatura, departamento, timestamp }) => (`(${temperatura}, '${departamento}', '${timestamp}')`)).join(', ');
+    const values = datos.map(({ temperatura, departamento, fecha }) => (`(${temperatura}, '${departamento}', '${fecha}')`)).join(', ');
     await this.clickhouse.query(`${query} ${values}`).toPromise();
   }
 }
@@ -89,7 +89,7 @@ function getData(fdate: Date = new Date(Date.now() - 3 * (3.6e6))): Array<unknow
   const datos = Array.from({ length: 120 }, () => ({
     departamento: String(cont++),
     temperatura: parseFloat(getRandomDecimal(15, 20, 2)),
-    date: fdate.getTime(), //fdate //new Date().toLocaleString(),
+    fecha: fdate.getTime(), //fdate //new Date().toLocaleString(),
   }));
   return datos;
 }
