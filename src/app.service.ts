@@ -52,12 +52,6 @@ export class AppService {
   }
 
   async setData() {
-    /*let cont = 1
-    const datos = Array.from({ length: 120 }, () => ({
-      departamento: cont++,
-      temperatura: parseFloat(getRandomDecimal(15, 20, 2)),
-      timestamp: Date.now(), //new Date().toLocaleString(),
-    }));*/
     let datos = getData()
     const query = "INSERT INTO mediciones (temperatura, departamento, timestamp) VALUES";
     const values = datos.map(({ temperatura, departamento, timestamp }) => (`(${temperatura}, '${departamento}', '${timestamp}')`)).join(', ');
@@ -75,7 +69,7 @@ Los datos entregados son con respceto a date - 1 hora
 datos2 = getData(); // Sin argumentos, el date sera el del momento en que se inicializa la variable
 */
 
-function getData(fdate : Date = new Date()): Array<unknown> { 
+function getData(fdate : Date = new Date(Date.now() - 3*(3.6e6))): Array<unknown> { 
   let cont = 1
   const datos = Array.from({ length: 120 }, () => ({
       departamento: String(cont++),
