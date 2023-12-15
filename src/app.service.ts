@@ -2,14 +2,16 @@ import { Inject, Injectable } from '@nestjs/common';
 import * as cron from 'node-cron';
 import { ClickHouse } from 'clickhouse';
 import { TemperaturaDto } from './dto/clickhouseDto';
+import { MongoClient } from 'mongodb';
 
 @Injectable()
 export class AppService {
 
   constructor(
     @Inject('CLICKHOUSE') private readonly clickhouse: ClickHouse,
+    @Inject('MONGO') private readonly mongo: MongoClient,
   ) {
-    cron.schedule('55 02 00 * * *', () => {
+    cron.schedule('55 13 10 * * *', () => {
       this.average();
     });
     setInterval(()=>{this.setData()}, 30000)
@@ -23,7 +25,7 @@ export class AppService {
     const query = `
       SELECT departamento, fecha AS ultima_medicion, temperatura
       FROM mediciones
-      ORDER BY departamento, timestamp DESC
+      ORDER BY departamento, fecha DESC
       LIMIT 1 BY departamento
     `;
     const data = await this.clickhouse.query(query).toPromise();
@@ -41,7 +43,6 @@ export class AppService {
     `;
     const datosTemperatura = await this.clickhouse.query(query).toPromise();
 
-    console.log(datosTemperatura)
 
     const datosPorHora = datosTemperatura.reduce((acumulador, dato: TemperaturaDto) => {
       const hora = (new Date(dato.fecha)).getHours();
@@ -53,17 +54,47 @@ export class AppService {
       return acumulador;
     }, {});
 
-    console.log(datosPorHora)
-
     const promediosPorHora = Object.keys(datosPorHora).map((hora) => {
       const departamento = Object.keys(datosPorHora[hora]);
       const promediosPorDepartamento = departamento.map((departamento) => {
-        const promedio = datosPorHora[hora][departamento].total / datosPorHora[hora][departamento].count;
+        const promedio = (datosPorHora[hora][departamento].total / datosPorHora[hora][departamento].count).toFixed(2);
         return { hora, departamento, promedio };
       });
       return promediosPorDepartamento;
     });
-    console.log(promediosPorHora)
+
+    try {
+      await this.mongo.connect();
+      // Send a ping to confirm a successful connection
+      await this.mongo.db("admin").command({ ping: 1 });
+      console.log("Pinged your deployment. You successfully connected to MongoDB!");
+
+      for (const promediosPorDepartamento of promediosPorHora) {
+        for(const promedio of promediosPorDepartamento) {
+          const filter = { 
+            Departamento: promedio.departamento
+          }
+
+          const update = {
+            $push: {
+              Mediciones: {
+                Fecha: init[0],
+                Hora: promedio.hora,
+                Temperatura: promedio.promedio
+              }
+            }
+          }
+
+          await this.mongo.db('monitoreo').collection("Historial").updateOne(filter, update, { upsert: true });
+          
+        };
+      }; 
+
+    } finally {
+      // Ensures that the client will close when you finish/error
+      await this.mongo.close();
+      console.log("Closed connection to MongoDB");
+    }
   }
 
   async setData() {
@@ -71,6 +102,47 @@ export class AppService {
     const query = "INSERT INTO mediciones (temperatura, departamento, fecha) VALUES";
     const values = datos.map(({ temperatura, departamento, fecha }) => (`(${temperatura}, '${departamento}', '${fecha}')`)).join(', ');
     await this.clickhouse.query(`${query} ${values}`).toPromise();
+  }
+
+  async createDepartaments() {
+    const departamentoData = Array.from({ length: 120 }, (_, i) => {
+      const TIdeal = getRandomDecimal(15, 20, 2).toFixed(2);
+      const TMin = (parseFloat(TIdeal) - getRandomDecimal(0, 1, 2)).toFixed(2);
+      const TMax = (parseFloat(TIdeal) + getRandomDecimal(0, 1, 2)).toFixed(2);
+
+      return {
+        Numero: String(i + 1),
+        TIdeal: TIdeal,
+        TMin: TMin,
+        TMax: TMax,
+      };
+    });
+    
+    let result = {}
+
+    try {
+      await this.mongo.connect();
+      const db = this.mongo.db("monitoreo");
+    
+      for (const departamento of departamentoData) {
+        const filter = { Numero: departamento.Numero };
+    
+        const update = {
+          $setOnInsert: {
+            TMin: departamento.TMin,
+            TMax: departamento.TMax,
+            TIdeal: departamento.TIdeal,
+            Logs: [] // Array de logs vacío
+          }
+        };
+    
+        result = await db.collection("Departamento").updateOne(filter, update, { upsert: true });
+      }
+    
+    } finally {
+      await this.mongo.close();
+    }
+    return JSON.stringify(result);
   }
 }
 
@@ -88,13 +160,13 @@ function getData(fdate: Date = new Date(Date.now() - 3 * (3.6e6))): Array<unknow
   let cont = 1
   const datos = Array.from({ length: 120 }, () => ({
     departamento: String(cont++),
-    temperatura: parseFloat(getRandomDecimal(15, 20, 2)),
+    temperatura: getRandomDecimal(15, 20, 2),
     fecha: fdate.getTime(), //fdate //new Date().toLocaleString(),
   }));
   return datos;
 }
 
-function getRandomDecimal(min, max, precision) {
+function getRandomDecimal(min, max, precision): number {
   const factor = Math.pow(10, precision);
   return Math.floor(Math.random() * (max - min + 1) * factor) / factor + min;
 }

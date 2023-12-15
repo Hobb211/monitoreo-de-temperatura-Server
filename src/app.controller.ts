@@ -16,4 +16,8 @@ export class AppController {
     return this.appService.read();
   }
 
+  @Get('/create-departaments')
+  async createDepartaments() {
+    return this.appService.createDepartaments();
+  }
 }
