@@ -9,9 +9,10 @@ export class AppService {
   constructor(
     @Inject('CLICKHOUSE') private readonly clickhouse: ClickHouse,
   ) {
-    cron.schedule('0 0 * * *', () => {
+    cron.schedule('55 02 00 * * *', () => {
       this.average();
     });
+    setInterval(()=>{this.setData()}, 30000)
   }
 
   getHello(): string {
@@ -20,7 +21,7 @@ export class AppService {
 
   async read() {
     const query = `
-      SELECT departamento, timestamp AS ultima_medicion, temperatura
+      SELECT departamento, fecha AS ultima_medicion, temperatura
       FROM mediciones
       ORDER BY departamento, timestamp DESC
       LIMIT 1 BY departamento
@@ -30,36 +31,51 @@ export class AppService {
   }
 
   async average() {
+    const today = new Date();
+    const init = (new Date(today.setHours(0,0,0,0))).toLocaleString('en-CA',{hour12:false}).split(',');
+    const fin = new Date(today.setHours(23,59,59,999)).toLocaleString('en-CA',{hour12:false}).split(',');
     const query = `
-      SELECT departamento, timestamp, temperatura
-      FROM mediciones_temperatura
-      WHERE timestamp >= TODAY() AND timestamp < TODAY() + 1;
+      SELECT departamento, fecha, temperatura
+      FROM mediciones
+      WHERE fecha >= '${String(init[0]+' '+(init[1].split(' ')[1].replace('24:','00:')))}' AND fecha <  '${String(fin[0]+' '+fin[1].split(' ')[1])}';
     `;
     const datosTemperatura = await this.clickhouse.query(query).toPromise();
 
+    console.log(datosTemperatura)
+
     const datosPorHora = datosTemperatura.reduce((acumulador, dato: TemperaturaDto) => {
-      const hora = dato.timestamp.getHours();
-      acumulador[hora] = acumulador[hora] || { total: 0, count: 0 };
-      acumulador[hora].total += dato.temperatura;
-      acumulador[hora].count += 1;
+      const hora = (new Date(dato.fecha)).getHours();
+      const departamento = dato.departamento;
+      if (!acumulador[hora]) acumulador[hora] = {};
+      if (!acumulador[hora][departamento]) acumulador[hora][departamento] = { total: 0, count: 0 };
+      acumulador[hora][departamento].total += dato.temperatura;
+      acumulador[hora][departamento].count += 1;
       return acumulador;
     }, {});
 
+    console.log(datosPorHora)
+
     const promediosPorHora = Object.keys(datosPorHora).map((hora) => {
-      const promedio = datosPorHora[hora].total / datosPorHora[hora].count;
-      return { hora: parseInt(hora), promedio };
+      const departamento = Object.keys(datosPorHora[hora]);
+      const promediosPorDepartamento = departamento.map((departamento) => {
+        const promedio = datosPorHora[hora][departamento].total / datosPorHora[hora][departamento].count;
+        return { hora, departamento, promedio };
+      });
+      return promediosPorDepartamento;
     });
+    console.log(promediosPorHora)
   }
 
   async setData() {
+    console.log('set data')
     let cont = 1
     const datos = Array.from({ length: 120 }, () => ({
       departamento: cont++,
       temperatura: parseFloat(getRandomDecimal(15, 20, 2)),
-      timestamp: Date.now(), //new Date().toLocaleString(),
+      fecha: new Date().toLocaleString(),
     }));
-    const query = "INSERT INTO mediciones (temperatura, departamento, timestamp) VALUES";
-    const values = datos.map(({ temperatura, departamento, timestamp }) => (`(${temperatura}, '${departamento}', '${timestamp}')`)).join(', ');
+    const query = "INSERT INTO mediciones (temperatura, departamento, fecha) VALUES";
+    const values = datos.map(({ temperatura, departamento, fecha }) => (`(${temperatura}, '${departamento}', '${fecha}')`)).join(', ');
     await this.clickhouse.query(`${query} ${values}`).toPromise();
   }
 }

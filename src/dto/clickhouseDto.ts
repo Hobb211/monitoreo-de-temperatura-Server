@@ -1,5 +1,5 @@
 export class TemperaturaDto {
     departamento: string;
-    timestamp: Date;
+    fecha: Date;
     temperatura: number;
 }

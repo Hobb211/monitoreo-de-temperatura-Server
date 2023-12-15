@@ -16,8 +16,4 @@ export class AppController {
     return this.appService.read();
   }
 
-  @Get('/setData')
-  async setData() {
-    return this.appService.setData();
-  }
 }
