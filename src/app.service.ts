@@ -52,16 +52,37 @@ export class AppService {
   }
 
   async setData() {
-    let cont = 1
+    /*let cont = 1
     const datos = Array.from({ length: 120 }, () => ({
       departamento: cont++,
       temperatura: parseFloat(getRandomDecimal(15, 20, 2)),
       timestamp: Date.now(), //new Date().toLocaleString(),
-    }));
+    }));*/
+    let datos = getData()
     const query = "INSERT INTO mediciones (temperatura, departamento, timestamp) VALUES";
     const values = datos.map(({ temperatura, departamento, timestamp }) => (`(${temperatura}, '${departamento}', '${timestamp}')`)).join(', ');
     await this.clickhouse.query(`${query} ${values}`).toPromise();
   }
+}
+
+/*
+let date = 1702600405734; // 2023-12-15T00:33:25.734Z
+let datos1 = getData(new Date(date - 1*(3.6e6))); // los datos seran 2023-12-14T23:33:25.734Z
+
+Los datos entregados son con respceto a date - 1 hora
+
+
+datos2 = getData(); // Sin argumentos, el date sera el del momento en que se inicializa la variable
+*/
+
+function getData(fdate : Date = new Date()): Array<unknown> { 
+  let cont = 1
+  const datos = Array.from({ length: 120 }, () => ({
+      departamento: String(cont++),
+      temperatura: parseFloat(getRandomDecimal(15, 20, 2)),
+      date: fdate.getTime(), //fdate //new Date().toLocaleString(),
+  }));
+  return datos;
 }
 
 function getRandomDecimal(min, max, precision) {
