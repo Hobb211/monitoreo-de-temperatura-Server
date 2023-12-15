@@ -3,6 +3,8 @@ import * as cron from 'node-cron';
 import { ClickHouse } from 'clickhouse';
 import { TemperaturaDto } from './dto/clickhouseDto';
 import { MongoClient } from 'mongodb';
+import { updateDepartamentDto } from './dto/updateDepartmentDto';
+import { createLogDto } from './dto/createLogDto';
 
 @Injectable()
 export class AppService {
@@ -118,31 +120,68 @@ export class AppService {
       };
     });
     
-    let result = {}
+    for (const departamento of departamentoData) {
+      const filter = { Numero: departamento.Numero };
+  
+      const update = {
+        $setOnInsert: {
+          TMin: departamento.TMin,
+          TMax: departamento.TMax,
+          TIdeal: departamento.TIdeal,
+          Logs: [] // Array de logs vacío
+        }
+      };
+
+      this.updateDepartamentConnection(filter, update, { upsert: true });
+    }
+  }
+
+  async updateDepartament(update: updateDepartamentDto) {
+    const filter = { Numero: update.departamento };
+
+    const updateQuery = {
+      $set: {
+        TIdeal: update.TIdeal,
+        TMin: update.TMin,
+        TMax: update.TMax,
+      }
+    };
 
     try {
       await this.mongo.connect();
       const db = this.mongo.db("monitoreo");
-    
-      for (const departamento of departamentoData) {
-        const filter = { Numero: departamento.Numero };
-    
-        const update = {
-          $setOnInsert: {
-            TMin: departamento.TMin,
-            TMax: departamento.TMax,
-            TIdeal: departamento.TIdeal,
-            Logs: [] // Array de logs vacío
-          }
-        };
-    
-        result = await db.collection("Departamento").updateOne(filter, update, { upsert: true });
-      }
-    
+      const result = await db.collection("Departamento").updateOne(filter, updateQuery);
+      return JSON.stringify(result);
     } finally {
       await this.mongo.close();
     }
-    return JSON.stringify(result);
+  }
+
+  async createLog(create: createLogDto) {
+    const filter = { Numero: create.departamento };
+
+    const updateQuery = {
+      $push: {
+        Logs: {
+          Log: create.Log,
+          Timestamp: create.timestamp,
+          Visibility: true
+        }
+      }
+    }
+    this.updateDepartamentConnection(filter, updateQuery, { });
+  }
+
+  
+
+   async updateDepartamentConnection(filter, updateQuery,options){
+    try {
+      await this.mongo.connect();
+      const db = this.mongo.db("monitoreo");
+      await db.collection("Departamento").updateOne(filter, updateQuery,options);
+    } finally {
+      await this.mongo.close();
+    }
   }
 }
 
