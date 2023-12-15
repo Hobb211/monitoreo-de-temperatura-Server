@@ -78,7 +78,7 @@ export class AppService {
 let date = 1702600405734; // 2023-12-15T00:33:25.734Z
 let datos1 = getData(new Date(date - 1*(3.6e6))); // los datos seran 2023-12-14T23:33:25.734Z
 
-Los datos entregados son con respceto a date - 1 hora
+Los datos entregados son con respceto a date - 1 hora zona +3 con respecto a chile
 
 
 datos2 = getData(); // Sin argumentos, el date sera el del momento en que se inicializa la variable
