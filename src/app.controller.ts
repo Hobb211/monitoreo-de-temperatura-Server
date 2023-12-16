@@ -2,6 +2,7 @@ import { Body, Controller, Get, Post } from '@nestjs/common';
 import { AppService } from './app.service';
 import { updateDepartamentDto } from './dto/updateDepartmentDto';
 import { createLogDto } from './dto/createLogDto';
+import { Usuario } from './dto/createUserDto';
 
 @Controller()
 export class AppController {
@@ -31,5 +32,10 @@ export class AppController {
   @Post('/create-log')
   async createLog(@Body() body: createLogDto) {
     return this.appService.createLog(body);
+  }
+
+  @Post('/create-user')
+  async createUser(@Body() body: Usuario) {
+    return this.appService.createUser(body);
   }
 }

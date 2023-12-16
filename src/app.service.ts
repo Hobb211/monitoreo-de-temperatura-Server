@@ -5,18 +5,27 @@ import { TemperaturaDto } from './dto/clickhouseDto';
 import { MongoClient } from 'mongodb';
 import { updateDepartamentDto } from './dto/updateDepartmentDto';
 import { createLogDto } from './dto/createLogDto';
+import { Client } from 'pg';
 
 @Injectable()
 export class AppService {
+  private pgClient;
 
   constructor(
     @Inject('CLICKHOUSE') private readonly clickhouse: ClickHouse,
     @Inject('MONGO') private readonly mongo: MongoClient,
   ) {
+    this.pgClient = new Client({
+      user: 'flctctxl',
+      host: 'motty.db.elephantsql.com',
+      database: 'flctctxl',
+      password: 'xYLEB0rM-KtcBX6W09CupSajlgaCIuas',
+      port: 5432,
+    });
     cron.schedule('55 13 10 * * *', () => {
       this.average();
     });
-    setInterval(()=>{this.setData()}, 30000)
+    setInterval(()=>{this.setData()}, 3000)
   }
 
   getHello(): string {
@@ -156,6 +165,18 @@ export class AppService {
       await this.mongo.close();
     }
   }
+
+  async createUser(user) {
+    await this.pgClient.connect();
+    const query = `
+      INSERT INTO users (fullname, password, email)
+      VALUES ('${user.username}', '${user.password}', '${user.email}')
+    `;
+    await this.pgClient.query(query);
+    await this.pgClient.end();
+  }
+
+
 
   async createLog(create: createLogDto) {
     const filter = { Numero: create.departamento };
