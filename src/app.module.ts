@@ -6,7 +6,6 @@ import { MongoClient, ServerApiVersion } from 'mongodb';
 import { AuthModule } from './auth/auth.module';
 import { UsuarioModule } from './usuario/usuario.module';
 import { SequelizeModule } from '@nestjs/sequelize';
-import { dataBaseConfig } from 'database.config';
 
 @Module({
   imports: [
