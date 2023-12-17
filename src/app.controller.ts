@@ -13,7 +13,6 @@ export class AppController {
     return this.appService.getHello();
   }
 
-
   @Get('/read')
   async read() {
     return this.appService.read();
