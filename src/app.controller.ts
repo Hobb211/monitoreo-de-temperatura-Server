@@ -3,6 +3,7 @@ import { AppService } from './app.service';
 import { updateDepartamentDto } from './dto/updateDepartmentDto';
 import { createLogDto } from './dto/createLogDto';
 import { Usuario } from './dto/createUserDto';
+import { UpdateLogDto } from './dto/updateLogDto';
 
 @Controller()
 export class AppController {
@@ -38,4 +39,20 @@ export class AppController {
   async createUser(@Body() body: Usuario) {
     return this.appService.createUser(body);
   }
+
+  @Post('/update-log')
+  async updateLog(@Body() body: UpdateLogDto) {
+    return this.appService.updateLog(body);
+  }
+
+  @Post('/read-departament')
+  async readDepartament(@Body() body: string) {
+    return this.appService.readDepartament(body);
+  }
+
+  @Get('/get-departaments')
+  async getDepartaments() {
+    return this.appService.getDepartaments();
+  }
+
 }

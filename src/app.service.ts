@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import * as cron from 'node-cron';
 import { ClickHouse } from 'clickhouse';
 import { TemperaturaDto } from './dto/clickhouseDto';
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 import { updateDepartamentDto } from './dto/updateDepartmentDto';
 import { createLogDto } from './dto/createLogDto';
 import { Client } from 'pg';
@@ -10,6 +10,7 @@ import { Client } from 'pg';
 @Injectable()
 export class AppService {
   private pgClient;
+  private deps;
 
   constructor(
     @Inject('CLICKHOUSE') private readonly clickhouse: ClickHouse,
@@ -22,14 +23,20 @@ export class AppService {
       password: 'xYLEB0rM-KtcBX6W09CupSajlgaCIuas',
       port: 5432,
     });
+    this.openConnection();
     cron.schedule('55 13 10 * * *', () => {
       this.average();
     });
-    setInterval(()=>{this.setData()}, 3000)
+    setInterval(()=>{this.setData()}, 30000)
   }
 
   getHello(): string {
     return 'Hello World!';
+  }
+
+  async openConnection() {
+    await this.pgClient.connect();
+    this.deps = await this.mongo.db('monitoreo').collection('Departamento').find().toArray();
   }
 
   async read() {
@@ -40,7 +47,8 @@ export class AppService {
       LIMIT 1 BY departamento
     `;
     const data = await this.clickhouse.query(query).toPromise();
-    return JSON.stringify(Array.from(data.entries()));
+   
+    return JSON.stringify(data);
   }
 
   async average() {
@@ -109,7 +117,42 @@ export class AppService {
   }
 
   async setData() {
-    let datos = getData()
+    let datos = this.getData()
+    const logs = [];
+    datos.forEach(async(value)=> {
+      const medida = value.valueOf() as TemperaturaDto;
+      const dep = this.deps[parseInt(medida.departamento) - 1]
+      if (dep.TMax<medida.temperatura || dep.TMin>medida.temperatura) {
+        logs.push({
+          updateOne:{
+            filter: { Numero: medida.departamento },
+            update: {
+              $push: {
+                Logs: {
+                  Id: new ObjectId(),
+                  Log: `Temperatura fuera de rango, temperatura actual: ${medida.temperatura}`,
+                  Timestamp: new Date().toLocaleString(),
+                  Type: 'warning',
+                  Visibility: true
+                }
+              }
+            }
+          }
+        })
+      }
+    })
+    console.log(logs); 
+    if (logs.length > 0){
+      try{
+        await this.mongo.connect();
+        const db = this.mongo.db("monitoreo");
+        await db.collection("Departamento").bulkWrite(logs);
+      }catch(error){
+        console.log(error);
+      }finally{
+        await this.mongo.close();
+      }
+    }
     const query = "INSERT INTO mediciones (temperatura, departamento, fecha) VALUES";
     const values = datos.map(({ temperatura, departamento, fecha }) => (`(${temperatura}, '${departamento}', '${fecha}')`)).join(', ');
     await this.clickhouse.query(`${query} ${values}`).toPromise();
@@ -118,8 +161,8 @@ export class AppService {
   async createDepartaments() {
     const departamentoData = Array.from({ length: 120 }, (_, i) => {
       const TIdeal = getRandomDecimal(15, 20, 2).toFixed(2);
-      const TMin = (parseFloat(TIdeal) - getRandomDecimal(0, 1, 2)).toFixed(2);
-      const TMax = (parseFloat(TIdeal) + getRandomDecimal(0, 1, 2)).toFixed(2);
+      const TMin = (parseFloat(TIdeal) - getRandomDecimal(0, 2, 2)).toFixed(2);
+      const TMax = (parseFloat(TIdeal) + getRandomDecimal(0, 2, 2)).toFixed(2);
 
       return {
         Numero: String(i + 1),
@@ -129,19 +172,30 @@ export class AppService {
       };
     });
     
+    const departaments = []
     for (const departamento of departamentoData) {
-      const filter = { Numero: departamento.Numero };
-  
-      const update = {
-        $setOnInsert: {
-          TMin: departamento.TMin,
-          TMax: departamento.TMax,
-          TIdeal: departamento.TIdeal,
-          Logs: [] // Array de logs vacío
+      departaments.push({
+        updateOne: {
+          filter: { Numero: departamento.Numero },
+          update: {
+            $setOnInsert: {
+              TMin: departamento.TMin,
+              TMax: departamento.TMax,
+              TIdeal: departamento.TIdeal,
+              Logs: [] // Array de logs vacío
+            }
+          },
+          upsert: true
         }
-      };
-
-      this.updateDepartamentConnection(filter, update, { upsert: true });
+      });
+    }
+    try {
+      await this.mongo.connect();
+      const db = this.mongo.db("monitoreo");
+      await db.collection("Departamento").bulkWrite(departaments);
+      this.deps = await this.mongo.db('monitoreo').collection('Departamento').find().toArray();
+    } finally {
+      await this.mongo.close();
     }
   }
 
@@ -166,14 +220,42 @@ export class AppService {
     }
   }
 
+  async readDepartament(departamento: string) {
+    const filter = { Numero: departamento };
+    try {
+      await this.mongo.connect();
+      const db = this.mongo.db("monitoreo");
+      const result = await db.collection("Departamento").findOne(filter);
+      return JSON.stringify(result);
+    } finally {
+      await this.mongo.close();
+    }
+  }
+
+  async getDepartaments() {
+    try {
+      await this.mongo.connect();
+      const db = this.mongo.db("monitoreo");
+      const result = await db.collection("Departamento").find().toArray();
+      return JSON.stringify(result);
+    } finally {
+      await this.mongo.close();
+    }
+  }
+
   async createUser(user) {
-    await this.pgClient.connect();
-    const query = `
-      INSERT INTO users (fullname, password, email)
-      VALUES ('${user.username}', '${user.password}', '${user.email}')
-    `;
-    await this.pgClient.query(query);
-    await this.pgClient.end();
+    let message = "Usuario creado correctamente"
+    try {
+      const query = `
+        INSERT INTO users (fullname, password, email)
+        VALUES ('${user.fullname}', '${user.password}', '${user.email}')
+      `;
+      await this.pgClient.query(query);
+    }catch (error) {
+      console.log(error);
+      message = "Error al crear usuario, el correo ya existe"
+    }
+    return message
   }
 
   async createLog(create: createLogDto) {
@@ -182,7 +264,9 @@ export class AppService {
     const updateQuery = {
       $push: {
         Logs: {
+          Id: new ObjectId(),
           Log: create.Log,
+          Type: "message",
           Timestamp: create.timestamp,
           Visibility: true
         }
@@ -191,14 +275,45 @@ export class AppService {
     this.updateDepartamentConnection(filter, updateQuery, { });
   }
 
+  async updateLog(update) {
+    
+    const filter = { Numero: update.departamento, 'Logs.Id': update.id };
+
+    const updateQuery = {
+      $set: {
+        'Logs.$.Log': update.log,
+        'Logs.$.Timestamp': update.timestamp,
+        'Logs.$.Visibility': update.visibility
+      }
+    }
+    
+    this.updateDepartamentConnection(filter, updateQuery, { });
+  }
+  
    async updateDepartamentConnection(filter, updateQuery,options){
     try {
       await this.mongo.connect();
       const db = this.mongo.db("monitoreo");
       await db.collection("Departamento").updateOne(filter, updateQuery,options);
-    } finally {
+      
+    } catch (error) {
+      console.log(error);
+    }finally{
       await this.mongo.close();
     }
+  }
+
+  getData(fdate: Date = new Date(Date.now() - 3 * (3.6e6))): Array<unknown> {
+    let cont = 1
+    const datos = []
+    this.deps.forEach((dep) => {
+      datos.push({
+        departamento: String(cont++),
+        temperatura: getRandomDecimal(dep.TMin-1, dep.TMax+1, 1),
+        fecha: fdate.getTime(), //fdate //new Date().toLocaleString(),
+      })
+    })
+    return datos;
   }
 }
 
@@ -212,15 +327,7 @@ Los datos entregados son con respceto a date - 1 hora zona +3 con respecto a chi
 datos2 = getData(); // Sin argumentos, el date sera el del momento en que se inicializa la variable
 */
 
-function getData(fdate: Date = new Date(Date.now() - 3 * (3.6e6))): Array<unknown> {
-  let cont = 1
-  const datos = Array.from({ length: 120 }, () => ({
-    departamento: String(cont++),
-    temperatura: getRandomDecimal(15, 20, 2),
-    fecha: fdate.getTime(), //fdate //new Date().toLocaleString(),
-  }));
-  return datos;
-}
+
 
 function getRandomDecimal(min, max, precision): number {
   const factor = Math.pow(10, precision);

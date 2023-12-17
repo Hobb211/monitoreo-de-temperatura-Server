@@ -35,9 +35,10 @@ col1: temperatura | col2: Departamento | col3: fecha
 
 ## Funcionalidades pendientes
 [*] get Departamento MongoDB
-[] ocultar Log
+[*] ocultar Log
 [] Historial de 2 años
-[] BD usuarios en amazon RDS
+[*] BD usuarios en la nube
+[ ] Arreglar el problema en read para crear alertas 
 
 
 ## Postgres
