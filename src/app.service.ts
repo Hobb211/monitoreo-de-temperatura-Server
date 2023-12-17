@@ -146,7 +146,6 @@ export class AppService {
         })
       }
     })
-    console.log(logs); 
     if (logs.length > 0){
       try{
         await this.mongo.connect();

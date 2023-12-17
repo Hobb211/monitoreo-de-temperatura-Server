@@ -12,6 +12,7 @@ Departamento{
         {
             Log:
             TimeStamp:
+            Type: "warning" | "message"
             Visibilidad:
         }
     ]
@@ -38,7 +39,8 @@ col1: temperatura | col2: Departamento | col3: fecha
 [*] ocultar Log
 [] Historial de 2 años
 [*] BD usuarios en la nube
-[ ] Arreglar el problema en read para crear alertas 
+[*] Arreglar el problema en read para crear alertas 
+[] Get historial
 
 
 ## Postgres
