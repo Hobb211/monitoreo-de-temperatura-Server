@@ -5,24 +5,15 @@ import { TemperaturaDto } from './dto/clickhouseDto';
 import { MongoClient, ObjectId } from 'mongodb';
 import { updateDepartamentDto } from './dto/updateDepartmentDto';
 import { createLogDto } from './dto/createLogDto';
-import { Client } from 'pg';
 
 @Injectable()
 export class AppService {
-  private pgClient;
   private deps;
 
   constructor(
     @Inject('CLICKHOUSE') private readonly clickhouse: ClickHouse,
     @Inject('MONGO') private readonly mongo: MongoClient,
   ) {
-    this.pgClient = new Client({
-      user: 'flctctxl',
-      host: 'motty.db.elephantsql.com',
-      database: 'flctctxl',
-      password: 'xYLEB0rM-KtcBX6W09CupSajlgaCIuas',
-      port: 5432,
-    });
     this.openConnection();
     cron.schedule('55 13 10 * * *', () => {
       this.average();
@@ -35,7 +26,6 @@ export class AppService {
   }
 
   async openConnection() {
-    await this.pgClient.connect();
     this.deps = await this.mongo.db('monitoreo').collection('Departamento').find().toArray();
   }
 
@@ -53,30 +43,42 @@ export class AppService {
 
   async average() {
     const today = new Date();
-    const init = (new Date(today.setHours(0,0,0,0))).toLocaleString('en-CA',{hour12:false}).split(',');
-    const fin = new Date(today.setHours(23,59,59,999)).toLocaleString('en-CA',{hour12:false}).split(',');
+    const init = new Date(today.setHours(0, 0, 0, 0))
+      .toLocaleString('en-CA', { hour12: false })
+      .split(',');
+    const fin = new Date(today.setHours(23, 59, 59, 999))
+      .toLocaleString('en-CA', { hour12: false })
+      .split(',');
     const query = `
       SELECT departamento, fecha, temperatura
       FROM mediciones
-      WHERE fecha >= '${String(init[0]+' '+(init[1].split(' ')[1].replace('24:','00:')))}' AND fecha <  '${String(fin[0]+' '+fin[1].split(' ')[1])}';
+      WHERE fecha >= '${String(
+        init[0] + ' ' + init[1].split(' ')[1].replace('24:', '00:'),
+      )}' AND fecha <  '${String(fin[0] + ' ' + fin[1].split(' ')[1])}';
     `;
     const datosTemperatura = await this.clickhouse.query(query).toPromise();
 
-
-    const datosPorHora = datosTemperatura.reduce((acumulador, dato: TemperaturaDto) => {
-      const hora = (new Date(dato.fecha)).getHours();
-      const departamento = dato.departamento;
-      if (!acumulador[hora]) acumulador[hora] = {};
-      if (!acumulador[hora][departamento]) acumulador[hora][departamento] = { total: 0, count: 0 };
-      acumulador[hora][departamento].total += dato.temperatura;
-      acumulador[hora][departamento].count += 1;
-      return acumulador;
-    }, {});
+    const datosPorHora = datosTemperatura.reduce(
+      (acumulador, dato: TemperaturaDto) => {
+        const hora = new Date(dato.fecha).getHours();
+        const departamento = dato.departamento;
+        if (!acumulador[hora]) acumulador[hora] = {};
+        if (!acumulador[hora][departamento])
+          acumulador[hora][departamento] = { total: 0, count: 0 };
+        acumulador[hora][departamento].total += dato.temperatura;
+        acumulador[hora][departamento].count += 1;
+        return acumulador;
+      },
+      {},
+    );
 
     const promediosPorHora = Object.keys(datosPorHora).map((hora) => {
       const departamento = Object.keys(datosPorHora[hora]);
       const promediosPorDepartamento = departamento.map((departamento) => {
-        const promedio = (datosPorHora[hora][departamento].total / datosPorHora[hora][departamento].count).toFixed(2);
+        const promedio = (
+          datosPorHora[hora][departamento].total /
+          datosPorHora[hora][departamento].count
+        ).toFixed(2);
         return { hora, departamento, promedio };
       });
       return promediosPorDepartamento;
@@ -85,34 +87,37 @@ export class AppService {
     try {
       await this.mongo.connect();
       // Send a ping to confirm a successful connection
-      await this.mongo.db("admin").command({ ping: 1 });
-      console.log("Pinged your deployment. You successfully connected to MongoDB!");
+      await this.mongo.db('admin').command({ ping: 1 });
+      console.log(
+        'Pinged your deployment. You successfully connected to MongoDB!',
+      );
 
       for (const promediosPorDepartamento of promediosPorHora) {
-        for(const promedio of promediosPorDepartamento) {
-          const filter = { 
-            Departamento: promedio.departamento
-          }
+        for (const promedio of promediosPorDepartamento) {
+          const filter = {
+            Departamento: promedio.departamento,
+          };
 
           const update = {
             $push: {
               Mediciones: {
                 Fecha: init[0],
                 Hora: promedio.hora,
-                Temperatura: promedio.promedio
-              }
-            }
-          }
+                Temperatura: promedio.promedio,
+              },
+            },
+          };
 
-          await this.mongo.db('monitoreo').collection("Historial").updateOne(filter, update, { upsert: true });
-          
-        };
-      }; 
-
+          await this.mongo
+            .db('monitoreo')
+            .collection('Historial')
+            .updateOne(filter, update, { upsert: true });
+        }
+      }
     } finally {
       // Ensures that the client will close when you finish/error
       await this.mongo.close();
-      console.log("Closed connection to MongoDB");
+      console.log('Closed connection to MongoDB');
     }
   }
 
@@ -207,13 +212,13 @@ export class AppService {
         TIdeal: update.TIdeal,
         TMin: update.TMin,
         TMax: update.TMax,
-      }
+      },
     };
 
     try {
       await this.mongo.connect();
-      const db = this.mongo.db("monitoreo");
-      const result = await db.collection("Departamento").updateOne(filter, updateQuery);
+      const db = this.mongo.db('monitoreo');
+      const result = await db.collection('Departamento').updateOne(filter, updateQuery);
       return JSON.stringify(result);
     } finally {
       await this.mongo.close();
@@ -243,20 +248,6 @@ export class AppService {
     }
   }
 
-  async createUser(user) {
-    let message = "Usuario creado correctamente"
-    try {
-      const query = `
-        INSERT INTO users (fullname, password, email)
-        VALUES ('${user.fullname}', '${user.password}', '${user.email}')
-      `;
-      await this.pgClient.query(query);
-    }catch (error) {
-      console.log(error);
-      message = "Error al crear usuario, el correo ya existe"
-    }
-    return message
-  }
 
   async createLog(create: createLogDto) {
     const filter = { Numero: create.departamento };
@@ -268,11 +259,11 @@ export class AppService {
           Log: create.Log,
           Type: "message",
           Timestamp: create.timestamp,
-          Visibility: true
-        }
-      }
-    }
-    this.updateDepartamentConnection(filter, updateQuery, { });
+          Visibility: true,
+        },
+      },
+    };
+    this.updateDepartamentConnection(filter, updateQuery, {});
   }
 
   async updateLog(update) {
@@ -333,4 +324,3 @@ function getRandomDecimal(min, max, precision): number {
   const factor = Math.pow(10, precision);
   return Math.floor(Math.random() * (max - min + 1) * factor) / factor + min;
 }
-

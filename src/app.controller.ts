@@ -14,7 +14,6 @@ export class AppController {
     return this.appService.getHello();
   }
 
-
   @Get('/read')
   async read() {
     return this.appService.read();
@@ -33,11 +32,6 @@ export class AppController {
   @Post('/create-log')
   async createLog(@Body() body: createLogDto) {
     return this.appService.createLog(body);
-  }
-
-  @Post('/create-user')
-  async createUser(@Body() body: Usuario) {
-    return this.appService.createUser(body);
   }
 
   @Post('/update-log')
