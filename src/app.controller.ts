@@ -49,4 +49,8 @@ export class AppController {
     return this.appService.getDepartaments();
   }
 
+  @Get('/ger-historial')
+  async getHistorial(@Body() body: string) {
+    return this.appService.getHistorial(body);
+  }
 }

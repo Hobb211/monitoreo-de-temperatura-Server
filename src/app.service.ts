@@ -164,9 +164,9 @@ export class AppService {
 
   async createDepartaments() {
     const departamentoData = Array.from({ length: 120 }, (_, i) => {
-      const TIdeal = getRandomDecimal(15, 20, 2).toFixed(2);
-      const TMin = (parseFloat(TIdeal) - getRandomDecimal(0, 2, 2)).toFixed(2);
-      const TMax = (parseFloat(TIdeal) + getRandomDecimal(0, 2, 2)).toFixed(2);
+      const TIdeal = getRandomDecimal(15, 20, 1).toFixed(1);
+      const TMin = (parseFloat(TIdeal) - getRandomDecimal(0, 2, 1)).toFixed(1);
+      const TMax = (parseFloat(TIdeal) + getRandomDecimal(0, 2, 1)).toFixed(1);
 
       return {
         Numero: String(i + 1),
@@ -247,6 +247,17 @@ export class AppService {
     }
   }
 
+  async getHistorial(departamento: string) {
+    const filter = { Departamento: departamento };
+    try {
+      await this.mongo.connect();
+      const db = this.mongo.db("monitoreo");
+      const result = await db.collection("Historial").findOne(filter)
+      return JSON.stringify(result);
+    } finally {
+      await this.mongo.close();
+    }
+  }
 
   async createLog(create: createLogDto) {
     const filter = { Numero: create.departamento };
