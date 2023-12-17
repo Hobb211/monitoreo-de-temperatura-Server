@@ -176,8 +176,6 @@ export class AppService {
     await this.pgClient.end();
   }
 
-
-
   async createLog(create: createLogDto) {
     const filter = { Numero: create.departamento };
 
@@ -192,8 +190,6 @@ export class AppService {
     }
     this.updateDepartamentConnection(filter, updateQuery, { });
   }
-
-  
 
    async updateDepartamentConnection(filter, updateQuery,options){
     try {
