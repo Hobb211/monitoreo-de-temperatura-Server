@@ -15,7 +15,7 @@ export class AppService {
     @Inject('MONGO') private readonly mongo: MongoClient,
   ) {
     this.openConnection();
-    cron.schedule('55 13 10 * * *', () => {
+    cron.schedule('55 9 21 * * *', () => {
       this.average();
     });
     setInterval(()=>{this.setData()}, 30000)
@@ -57,6 +57,8 @@ export class AppService {
       )}' AND fecha <  '${String(fin[0] + ' ' + fin[1].split(' ')[1])}';
     `;
     const datosTemperatura = await this.clickhouse.query(query).toPromise();
+    
+    await this.clickhouse.query(`TRUNCATE TABLE mediciones`).toPromise();
 
     const datosPorHora = datosTemperatura.reduce(
       (acumulador, dato: TemperaturaDto) => {
@@ -84,40 +86,33 @@ export class AppService {
       return promediosPorDepartamento;
     });
 
-    try {
-      await this.mongo.connect();
-      // Send a ping to confirm a successful connection
-      await this.mongo.db('admin').command({ ping: 1 });
-      console.log(
-        'Pinged your deployment. You successfully connected to MongoDB!',
-      );
+    const promedios= []
 
-      for (const promediosPorDepartamento of promediosPorHora) {
-        for (const promedio of promediosPorDepartamento) {
-          const filter = {
-            Departamento: promedio.departamento,
-          };
-
-          const update = {
-            $push: {
-              Mediciones: {
-                Fecha: init[0],
-                Hora: promedio.hora,
-                Temperatura: promedio.promedio,
+    for (const promediosPorDepartamento of promediosPorHora) {
+      for (const promedio of promediosPorDepartamento) {
+        promedios.push({
+          updateOne: {
+            filter: { departamento: promedio.departamento },
+            update: {
+              $push: {
+                Mediciones: {
+                  Fecha: init[0],
+                  Hora: promedio.hora,
+                  Temperatura: promedio.promedio,
+                },
               },
             },
-          };
-
-          await this.mongo
-            .db('monitoreo')
-            .collection('Historial')
-            .updateOne(filter, update, { upsert: true });
-        }
+            upsert: true,
+          },
+        })
       }
+    }
+
+    try {
+      await this.mongo.connect()
+      await this.mongo.db('monitoreo').collection('Historial').bulkWrite(promedios)
     } finally {
-      // Ensures that the client will close when you finish/error
       await this.mongo.close();
-      console.log('Closed connection to MongoDB');
     }
   }
 
