@@ -6,21 +6,26 @@ import { MongoClient, ServerApiVersion } from 'mongodb';
 import { AuthModule } from './auth/auth.module';
 import { UsuarioModule } from './usuario/usuario.module';
 import { SequelizeModule } from '@nestjs/sequelize';
-import { dataBaseConfig } from 'database.config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
+    ConfigModule.forRoot(),
     AuthModule,
     UsuarioModule,
-    SequelizeModule.forRoot({
-      dialect: 'postgres',
-      host: 'motty.db.elephantsql.com',
-      port: 5432,
-      username: 'flctctxl',
-      password: 'xYLEB0rM-KtcBX6W09CupSajlgaCIuas',
-      database: 'flctctxl',
-      autoLoadModels: true,
-      synchronize: true,
+    SequelizeModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        dialect: 'postgres',
+        host: configService.get<string>('DB_HOST'),
+        port: configService.get<number>('DB_PORT'),
+        username: configService.get<string>('DB_USERNAME'),
+        password: configService.get<string>('DB_PASSWORD'),
+        database: configService.get<string>('DB_DATABASE'),
+        autoLoadModels: true,
+        synchronize: true,
+      }),
+    inject: [ConfigService],
     }),
   ],
   controllers: [AppController],
@@ -28,9 +33,9 @@ import { dataBaseConfig } from 'database.config';
     AppService,
     {
       provide: 'CLICKHOUSE',
-      useFactory: () =>
+      useFactory: (configService: ConfigService) =>
         new ClickHouse({
-          url: 'https://vcxy28qwe6.us-west-2.aws.clickhouse.cloud',
+          url: configService.get<string>('CLICKHOUSE_URL'),
           port: 8443,
           debug: false,
           basicAuth: {
@@ -38,12 +43,12 @@ import { dataBaseConfig } from 'database.config';
             password: '9gadIswjJ~jdv',
           },
         }),
+      inject: [ConfigService],
     },
     {
       provide: 'MONGO',
-      useFactory: () =>
-        new MongoClient(
-          'mongodb+srv://user:qfs7bF78noMyzzRD@monitoreo-de-temperatur.4jsexrs.mongodb.net/?retryWrites=true&w=majority',
+      useFactory: (configService: ConfigService) =>
+        new MongoClient(configService.get<string>('MONGO_URL'),
           {
             serverApi: {
               version: ServerApiVersion.v1,
@@ -52,6 +57,7 @@ import { dataBaseConfig } from 'database.config';
             },
           },
         ),
+      inject: [ConfigService],
     },
   ],
 })
