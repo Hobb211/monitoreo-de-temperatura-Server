@@ -37,7 +37,12 @@ export class AppService {
       LIMIT 1 BY departamento
     `;
     const data = await this.clickhouse.query(query).toPromise();
-   
+    data.forEach((value:TemperaturaDto) => {
+      value.TMin = this.deps[parseInt(value.departamento) - 1].TMin;
+      value.TMax = this.deps[parseInt(value.departamento) - 1].TMax;
+      value.TIdeal = this.deps[parseInt(value.departamento) - 1].TIdeal;
+    });
+
     return JSON.stringify(data);
   }
 
