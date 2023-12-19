@@ -299,6 +299,11 @@ export class AppService {
     }
   }
 
+  /**
+   * Generates temperature data for a given date.
+   * @param fdate The date for which to retrieve the temperature data. Defaults to 3 hours ago.
+   * @returns An array of temperature data objects.
+   */
   getData(fdate: Date = new Date(Date.now() - 3 * (3.6e6))): Array<unknown> {
     let cont = 1
     const datos = []
@@ -309,6 +314,30 @@ export class AppService {
         fecha: fdate.getTime(), //fdate //new Date().toLocaleString(),
       })
     })
+    return datos;
+  }
+
+  /**
+   * Creates an array of data objects representing temperature readings for the past two years.
+   * Each data object contains the department number, temperature, and date.
+   * @returns An array of data objects.
+   */
+  createData(): Array<unknown> {
+    const currentDate = new Date();
+    const twoYearsAgo = new Date(currentDate.getFullYear() - 2, currentDate.getMonth(), currentDate.getDate());
+    const hourInMillis = 60 * 60 * 1000;
+    const datos = [];
+  
+    for (let date = currentDate.getTime(); date >= twoYearsAgo.getTime(); date -= hourInMillis) {
+      let cont = 1;
+      this.deps.forEach((dep) => {
+        datos.push({
+          departamento: String(cont++),
+          temperatura: getRandomDecimal(dep.TMin - 1, dep.TMax + 1, 1),
+          fecha: date,
+        });
+      });
+    }
     return datos;
   }
 }
