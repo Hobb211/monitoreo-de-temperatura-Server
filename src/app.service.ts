@@ -45,9 +45,11 @@ export class AppService {
     `;
     const data = await this.clickhouse.query(query).toPromise();
     data.forEach((value: TemperaturaDto) => {
-      value.TMin = this.deps[parseInt(value.departamento) - 1].TMin;
-      value.TMax = this.deps[parseInt(value.departamento) - 1].TMax;
-      value.TIdeal = this.deps[parseInt(value.departamento) - 1].TIdeal;
+      value.TMin = parseFloat(this.deps[parseInt(value.departamento) - 1].TMin);
+      value.TMax = parseFloat(this.deps[parseInt(value.departamento) - 1].TMax);
+      value.TIdeal = parseFloat(
+        this.deps[parseInt(value.departamento) - 1].TIdeal,
+      );
     });
 
     return JSON.stringify(data);
