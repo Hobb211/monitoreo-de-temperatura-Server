@@ -40,7 +40,7 @@ export class AppController {
     return this.appService.updateLog(body);
   }
 
-  @Post('/read-departament')
+  @Get('/read-departament')
   async readDepartament(@Body() body: Departamento) {
     return this.appService.readDepartament(body);
   }
@@ -50,7 +50,7 @@ export class AppController {
     return this.appService.getDepartaments();
   }
 
-  @Post('/get-historial')
+  @Get('/get-historial')
   async getHistorial(@Body() body: Departamento) {
     return this.appService.getHistorial(body);
   }
