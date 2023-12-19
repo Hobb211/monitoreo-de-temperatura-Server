@@ -50,7 +50,7 @@ export class AppController {
     return this.appService.getDepartaments();
   }
 
-  @Get('/get-historial')
+  @Post('/get-historial')
   async getHistorial(@Body() body: Departamento) {
     return this.appService.getHistorial(body);
   }
