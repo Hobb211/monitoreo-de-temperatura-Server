@@ -18,7 +18,9 @@ export class AppService {
     cron.schedule('55 9 21 * * *', () => {
       this.average();
     });
-    setInterval(()=>{this.setData()}, 30000)
+    setInterval(() => {
+      this.setData();
+    }, 30000);
   }
 
   getHello(): string {
@@ -26,7 +28,11 @@ export class AppService {
   }
 
   async openConnection() {
-    this.deps = await this.mongo.db('monitoreo').collection('Departamento').find().toArray();
+    this.deps = await this.mongo
+      .db('monitoreo')
+      .collection('Departamento')
+      .find()
+      .toArray();
   }
 
   async read() {
@@ -37,7 +43,7 @@ export class AppService {
       LIMIT 1 BY departamento
     `;
     const data = await this.clickhouse.query(query).toPromise();
-    data.forEach((value:TemperaturaDto) => {
+    data.forEach((value: TemperaturaDto) => {
       value.TMin = this.deps[parseInt(value.departamento) - 1].TMin;
       value.TMax = this.deps[parseInt(value.departamento) - 1].TMax;
       value.TIdeal = this.deps[parseInt(value.departamento) - 1].TIdeal;
@@ -62,7 +68,7 @@ export class AppService {
       )}' AND fecha <  '${String(fin[0] + ' ' + fin[1].split(' ')[1])}';
     `;
     const datosTemperatura = await this.clickhouse.query(query).toPromise();
-    
+
     await this.clickhouse.query(`TRUNCATE TABLE mediciones`).toPromise();
 
     const datosPorHora = datosTemperatura.reduce(
@@ -91,7 +97,7 @@ export class AppService {
       return promediosPorDepartamento;
     });
 
-    const promedios= []
+    const promedios = [];
 
     for (const promediosPorDepartamento of promediosPorHora) {
       for (const promedio of promediosPorDepartamento) {
@@ -109,27 +115,30 @@ export class AppService {
             },
             upsert: true,
           },
-        })
+        });
       }
     }
 
     try {
-      await this.mongo.connect()
-      await this.mongo.db('monitoreo').collection('Historial').bulkWrite(promedios)
+      await this.mongo.connect();
+      await this.mongo
+        .db('monitoreo')
+        .collection('Historial')
+        .bulkWrite(promedios);
     } finally {
       await this.mongo.close();
     }
   }
 
   async setData() {
-    let datos = this.getData()
+    let datos = this.getData();
     const logs = [];
-    datos.forEach(async(value)=> {
+    datos.forEach(async (value) => {
       const medida = value.valueOf() as TemperaturaDto;
-      const dep = this.deps[parseInt(medida.departamento) - 1]
-      if (dep.TMax<medida.temperatura || dep.TMin>medida.temperatura) {
+      const dep = this.deps[parseInt(medida.departamento) - 1];
+      if (dep.TMax < medida.temperatura || dep.TMin > medida.temperatura) {
         logs.push({
-          updateOne:{
+          updateOne: {
             filter: { Numero: medida.departamento },
             update: {
               $push: {
@@ -138,27 +147,33 @@ export class AppService {
                   Log: `Temperatura fuera de rango, temperatura actual: ${medida.temperatura}`,
                   Timestamp: new Date().toLocaleString(),
                   Type: 'warning',
-                  Visibility: true
-                }
-              }
-            }
-          }
-        })
+                  Visibility: true,
+                },
+              },
+            },
+          },
+        });
       }
-    })
-    if (logs.length > 0){
-      try{
+    });
+    if (logs.length > 0) {
+      try {
         await this.mongo.connect();
-        const db = this.mongo.db("monitoreo");
-        await db.collection("Departamento").bulkWrite(logs);
-      }catch(error){
+        const db = this.mongo.db('monitoreo');
+        await db.collection('Departamento').bulkWrite(logs);
+      } catch (error) {
         console.log(error);
-      }finally{
+      } finally {
         await this.mongo.close();
       }
     }
-    const query = "INSERT INTO mediciones (temperatura, departamento, fecha) VALUES";
-    const values = datos.map(({ temperatura, departamento, fecha }) => (`(${temperatura}, '${departamento}', '${fecha}')`)).join(', ');
+    const query =
+      'INSERT INTO mediciones (temperatura, departamento, fecha) VALUES';
+    const values = datos
+      .map(
+        ({ temperatura, departamento, fecha }) =>
+          `(${temperatura}, '${departamento}', '${fecha}')`,
+      )
+      .join(', ');
     await this.clickhouse.query(`${query} ${values}`).toPromise();
   }
 
@@ -175,8 +190,8 @@ export class AppService {
         TMax: TMax,
       };
     });
-    
-    const departaments = []
+
+    const departaments = [];
     for (const departamento of departamentoData) {
       departaments.push({
         updateOne: {
@@ -186,18 +201,22 @@ export class AppService {
               TMin: departamento.TMin,
               TMax: departamento.TMax,
               TIdeal: departamento.TIdeal,
-              Logs: [] // Array de logs vacío
-            }
+              Logs: [], // Array de logs vacío
+            },
           },
-          upsert: true
-        }
+          upsert: true,
+        },
       });
     }
     try {
       await this.mongo.connect();
-      const db = this.mongo.db("monitoreo");
-      await db.collection("Departamento").bulkWrite(departaments);
-      this.deps = await this.mongo.db('monitoreo').collection('Departamento').find().toArray();
+      const db = this.mongo.db('monitoreo');
+      await db.collection('Departamento').bulkWrite(departaments);
+      this.deps = await this.mongo
+        .db('monitoreo')
+        .collection('Departamento')
+        .find()
+        .toArray();
     } finally {
       await this.mongo.close();
     }
@@ -217,7 +236,9 @@ export class AppService {
     try {
       await this.mongo.connect();
       const db = this.mongo.db('monitoreo');
-      const result = await db.collection('Departamento').updateOne(filter, updateQuery);
+      const result = await db
+        .collection('Departamento')
+        .updateOne(filter, updateQuery);
       return JSON.stringify(result);
     } finally {
       await this.mongo.close();
@@ -225,11 +246,12 @@ export class AppService {
   }
 
   async readDepartament(departamento: string) {
+    console.log(departamento);
     const filter = { Numero: departamento };
     try {
       await this.mongo.connect();
-      const db = this.mongo.db("monitoreo");
-      const result = await db.collection("Departamento").findOne(filter);
+      const db = this.mongo.db('monitoreo');
+      const result = await db.collection('Departamento').findOne(filter);
       return JSON.stringify(result);
     } finally {
       await this.mongo.close();
@@ -239,8 +261,8 @@ export class AppService {
   async getDepartaments() {
     try {
       await this.mongo.connect();
-      const db = this.mongo.db("monitoreo");
-      const result = await db.collection("Departamento").find().toArray();
+      const db = this.mongo.db('monitoreo');
+      const result = await db.collection('Departamento').find().toArray();
       return JSON.stringify(result);
     } finally {
       await this.mongo.close();
@@ -248,11 +270,12 @@ export class AppService {
   }
 
   async getHistorial(departamento: string) {
+    console.log(departamento);
     const filter = { Departamento: departamento };
     try {
       await this.mongo.connect();
-      const db = this.mongo.db("monitoreo");
-      const result = await db.collection("Historial").findOne(filter)
+      const db = this.mongo.db('monitoreo');
+      const result = await db.collection('Historial').findOne(filter);
       return JSON.stringify(result);
     } finally {
       await this.mongo.close();
@@ -267,7 +290,7 @@ export class AppService {
         Logs: {
           Id: new ObjectId(),
           Log: create.Log,
-          Type: "message",
+          Type: 'message',
           Timestamp: create.timestamp,
           Visibility: true,
         },
@@ -277,43 +300,43 @@ export class AppService {
   }
 
   async updateLog(update) {
-    
     const filter = { Numero: update.departamento, 'Logs.Id': update.id };
 
     const updateQuery = {
       $set: {
         'Logs.$.Log': update.log,
         'Logs.$.Timestamp': update.timestamp,
-        'Logs.$.Visibility': update.visibility
-      }
-    }
-    
-    this.updateDepartamentConnection(filter, updateQuery, { });
+        'Logs.$.Visibility': update.visibility,
+      },
+    };
+
+    this.updateDepartamentConnection(filter, updateQuery, {});
   }
-  
-   async updateDepartamentConnection(filter, updateQuery,options){
+
+  async updateDepartamentConnection(filter, updateQuery, options) {
     try {
       await this.mongo.connect();
-      const db = this.mongo.db("monitoreo");
-      await db.collection("Departamento").updateOne(filter, updateQuery,options);
-      
+      const db = this.mongo.db('monitoreo');
+      await db
+        .collection('Departamento')
+        .updateOne(filter, updateQuery, options);
     } catch (error) {
       console.log(error);
-    }finally{
+    } finally {
       await this.mongo.close();
     }
   }
 
-  getData(fdate: Date = new Date(Date.now() - 3 * (3.6e6))): Array<unknown> {
-    let cont = 1
-    const datos = []
+  getData(fdate: Date = new Date(Date.now() - 3 * 3.6e6)): Array<unknown> {
+    let cont = 1;
+    const datos = [];
     this.deps.forEach((dep) => {
       datos.push({
         departamento: String(cont++),
-        temperatura: getRandomDecimal(dep.TMin-1, dep.TMax+1, 1),
+        temperatura: getRandomDecimal(dep.TMin - 1, dep.TMax + 1, 1),
         fecha: fdate.getTime(), //fdate //new Date().toLocaleString(),
-      })
-    })
+      });
+    });
     return datos;
   }
 }
@@ -327,8 +350,6 @@ Los datos entregados son con respceto a date - 1 hora zona +3 con respecto a chi
 
 datos2 = getData(); // Sin argumentos, el date sera el del momento en que se inicializa la variable
 */
-
-
 
 function getRandomDecimal(min, max, precision): number {
   const factor = Math.pow(10, precision);

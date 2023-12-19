@@ -39,7 +39,7 @@ export class AppController {
     return this.appService.updateLog(body);
   }
 
-  @Post('/read-departament')
+  @Get('/read-departament')
   async readDepartament(@Body() body: string) {
     return this.appService.readDepartament(body);
   }
