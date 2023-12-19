@@ -4,6 +4,7 @@ import { updateDepartamentDto } from './dto/updateDepartmentDto';
 import { createLogDto } from './dto/createLogDto';
 import { Usuario } from './dto/createUserDto';
 import { UpdateLogDto } from './dto/updateLogDto';
+import { Departamento } from './dto/departmentDto';
 
 @Controller()
 export class AppController {
@@ -40,7 +41,7 @@ export class AppController {
   }
 
   @Post('/read-departament')
-  async readDepartament(@Body() body: string) {
+  async readDepartament(@Body() body: Departamento) {
     return this.appService.readDepartament(body);
   }
 
@@ -50,7 +51,7 @@ export class AppController {
   }
 
   @Get('/get-historial')
-  async getHistorial(@Body() body: string) {
+  async getHistorial(@Body() body: Departamento) {
     return this.appService.getHistorial(body);
   }
 }

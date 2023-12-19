@@ -5,6 +5,7 @@ import { TemperaturaDto } from './dto/clickhouseDto';
 import { MongoClient, ObjectId } from 'mongodb';
 import { updateDepartamentDto } from './dto/updateDepartmentDto';
 import { createLogDto } from './dto/createLogDto';
+import { Departamento } from './dto/departmentDto';
 
 @Injectable()
 export class AppService {
@@ -224,8 +225,8 @@ export class AppService {
     }
   }
 
-  async readDepartament(departamento: string) {
-    const filter = { Numero: departamento };
+  async readDepartament(departamento: Departamento) {
+    const filter = { Numero: departamento.departamento };
     try {
       await this.mongo.connect();
       const db = this.mongo.db("monitoreo");
@@ -247,8 +248,8 @@ export class AppService {
     }
   }
 
-  async getHistorial(departamento: string) {
-    const filter = { Departamento: departamento };
+  async getHistorial(departamento: Departamento) {
+    const filter = { Departamento: departamento.departamento };
     try {
       await this.mongo.connect();
       const db = this.mongo.db("monitoreo");
