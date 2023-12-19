@@ -248,8 +248,8 @@ export class AppService {
     }
   }
 
-  async readDepartament(departamento: Departamento) {
-    const filter = { Numero: departamento.departamento };
+  async readDepartament(departamento: string) {
+    const filter = { Numero: departamento };
     try {
       await this.mongo.connect();
       const db = this.mongo.db('monitoreo');

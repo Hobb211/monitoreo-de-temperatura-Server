@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { AppService } from './app.service';
 import { updateDepartamentDto } from './dto/updateDepartmentDto';
 import { createLogDto } from './dto/createLogDto';
@@ -40,9 +40,9 @@ export class AppController {
     return this.appService.updateLog(body);
   }
 
-  @Get('/read-departament')
-  async readDepartament(@Body() body: Departamento) {
-    return this.appService.readDepartament(body);
+  @Get('/read-departament/:id')
+  async readDepartament(@Param('id') departamento: string) {
+    return this.appService.readDepartament(departamento);
   }
 
   @Get('/get-departaments')
