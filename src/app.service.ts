@@ -271,8 +271,8 @@ export class AppService {
     }
   }
 
-  async getHistorial(departamento: Departamento) {
-    const filter = { Departamento: departamento.departamento };
+  async getHistorial(departamento) {
+    const filter = { Departamento: departamento };
     try {
       await this.mongo.connect();
       const db = this.mongo.db('monitoreo');

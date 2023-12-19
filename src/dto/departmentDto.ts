@@ -1,3 +1,3 @@
-export interface Departamento{
-    departamento: string;
+export interface Departamento {
+  departamento: string;
 }
