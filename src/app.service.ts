@@ -223,6 +223,36 @@ export class AppService {
     } finally {
       await this.mongo.close();
     }
+
+/*     let fecha = new Date().setHours(0, 0, 0, 0);
+    const historial = [];
+    for (let i =0; i<17520; i++){
+      fecha = fecha - 3.6e6;
+      for (let j=0; j<120; j++){
+        historial.push({
+          updateOne: {
+            filter: { Numero: String(j+1) },
+            update: {
+              $push: {
+                Mediciones: {
+                  Fecha: new Date(fecha).toLocaleDateString(),
+                  Hora: new Date(fecha).getHours(),
+                  Temperatura: getRandomDecimal(parseFloat(this.deps[j].TMin), parseFloat(this.deps[j].TMax), 1),
+                },
+              },
+            },
+            upsert: true,
+          },
+        });
+      }
+    }
+    try {
+      await this.mongo.connect();
+      const db = this.mongo.db('monitoreo');
+      await db.collection('Historial').bulkWrite(historial);
+    } catch (error) {
+      console.log(error);
+    } */
   }
 
   async updateDepartament(update: updateDepartamentDto) {
